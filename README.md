@@ -16,4 +16,16 @@
 Учтите, что таких сообщений может быть несколько, ведь сразу несколько людей могут иметь 
 дни рождения в один день.
 
+## <font color="tomato">Полезные ссылки</font>
+
+[HOW TO CONVERT DATE STRING TO TIME_T](https://www.appsloveworld.com/cplus/100/631/how-to-convert-date-string-to-time-t)
+
+[std::get_time](https://en.cppreference.com/w/cpp/io/manip/get_time)
+
+[std::get_time](https://cplusplus.com/reference/iomanip/get_time/)
+
+[mktime](https://cplusplus.com/reference/ctime/mktime/)
+
+[map::lower_bound](https://cplusplus.com/reference/map/map/lower_bound/)
+
 
