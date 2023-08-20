@@ -43,8 +43,6 @@ void reloadStream() {
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 }
 
-// Позволяет получить того типа времени, который передан в timeType (любой один из разрешенных для get_time)
-// Нет ограничения по датам будущего
 time_t putTime(char timeType, time_t basisTime) {
     std::string fmtDate = { '%', timeType };
 
@@ -72,7 +70,6 @@ time_t putTime(char timeType, time_t basisTime) {
     }
 }
 
-// в format нужно передать корректную для std::get_time строку типа 'YYYY/mm/dd' или 'HH:MM:SS'
 time_t putTimeByFormat(const std::string &format, char delim = '/') {
     vector<std::string> parts;
     std::stringstream ss(format);
@@ -97,27 +94,6 @@ int extractDayOfYearFromDate(time_t date) {
     bool isLeapYear = ((year % 400 == 0 || year % 100 != 0) && year % 4 == 0);
 
     return (local->tm_yday + (isLeapYear ? -1 : 0));
-}
-
-// сравнивает даты исходя из положения compareDate относительно baseDate
-int getRelativeToBaseDay(const time_t baseDate, const time_t comparedDate) {
-    std::tm base = *localtime(&baseDate);
-    std::tm compared = *localtime(&comparedDate);
-
-    if (compared.tm_mon == base.tm_mon) {
-        if (compared.tm_mday == base.tm_mday) return 0;
-        return (compared.tm_mday < base.tm_mday) ? -1 : 1;
-    }
-    return (compared.tm_mon < base.tm_mon) ? -1 : 1;
-}
-
-// Для варианта: std::sort(std::begin(listOfBirthdays), std::end(listOfBirthdays), compareToSortByDay)
-bool compareToSortByDay (const time_t baseDate, const time_t comparedDate) {
-    std::tm base = *localtime(&baseDate);
-    std::tm compared = *localtime(&comparedDate);
-    cout << "День в году: " << base.tm_yday << endl;
-
-    return (compared.tm_mon == base.tm_mon) ? compared.tm_mday >= base.tm_mday : compared.tm_mon >= base.tm_mon;
 }
 
 // 1. Получаем фамилию человека и дату его рождения (putTimeByFormat)
@@ -150,11 +126,48 @@ void addEntry(std::map<int, vector<string>> &calendar) {
     }
 }
 
+// Выводит следующий ближайший день рождения
+void printNextBirthday(const std::map<int, vector<string>> &calendar) {
+    time_t now = time(nullptr);
+    // В calendar ключами выступают дни текущего года.
+    // Поэтому из текущей даты извлекаем день года. Он позволит анализировать calendar.first
+    int today = extractDayOfYearFromDate(now);
+
+    // Находим следующий день рождения
+    auto nextBirthDay = calendar.lower_bound(today);
+    // Если запись найдена, значит до конца года есть ближайший день рождения. Выводим его
+    if (nextBirthDay != calendar.end()) {
+        cout << "Следующий ближайший день рождения в этом году у: " << endl;
+        for (const auto &value : nextBirthDay->second) {
+            cout << "  - " << value << endl;
+        }
+    }
+    // Либо уже выводим первый день рождения в начале года (но это не должна быть сегодняшняя дата)
+    else if (today != calendar.begin()->first) {
+        cout << "Следующий ближайший день рождения будет уже в следующем году у: " << endl;
+        for (const auto &value : calendar.begin()->second) {
+            cout << "  - " << value << endl;
+        }
+    }
+}
+
+void printCurrentBirthday(const std::map<int, vector<string>> &calendar) {
+    time_t now = time(nullptr);
+    int today = extractDayOfYearFromDate(now);
+
+    auto it = calendar.find(today);
+    if (it != calendar.end()) {
+        cout << "Сегодня день рождения у: " << endl;
+        for (const auto &value : it->second) {
+            cout << "  - " << value << endl;
+        }
+    }
+}
+
 int main() {
     SetConsoleCP(65001);
     SetConsoleOutputCP(65001);
 
-    // Для записей типа { день_с_начала_текущего_года: { "Sun Aug 20 10:23:44 2023", realDate, name_2 ... }
     std::map<int, vector<std::string>> calendar;
 
     addEntry(calendar);
@@ -170,23 +183,8 @@ int main() {
         }
     }
 
-    time_t now = time(nullptr);
-    int today = extractDayOfYearFromDate(now);
-
-    // Находим следующий день рождения
-    auto newBirthDay = calendar.lower_bound(today);
-
-    cout << "Следующий: " << endl;
-    if (newBirthDay != calendar.end()) {
-        cout << newBirthDay->first << ": " << endl;
-        for (const auto &value : newBirthDay->second) {
-            cout << value << endl;
-        }
-    }
-    else {
-        cout << calendar.begin()->first << ": " << endl;
-        for (const auto &value : calendar.begin()->second) {
-            cout << value << endl;
-        }
+    if (!calendar.empty()) {
+        printNextBirthday(calendar);
+        printCurrentBirthday(calendar);
     }
 }
