@@ -87,17 +87,24 @@ time_t putTimeByFormat(const std::string &format, char delim = '/') {
     return date;
 }
 
-// Внимание: нужно ещё учесть - является ли високосным текущий год. Здесь этого нет
-int extractDayOfYearFromDate(time_t date) {
-    std::tm* local = localtime(&date);
+bool hasLeapYear(time_t targetDate) {
+    std::tm* local = localtime(&targetDate);
     int year = local->tm_year + 1900;
-    bool isLeapYear = ((year % 400 == 0 || year % 100 != 0) && year % 4 == 0);
-
-    return (local->tm_yday + (isLeapYear ? -1 : 0));
+    return ((year % 400 == 0 || year % 100 != 0) && year % 4 == 0);
 }
 
-// 1. Получаем фамилию человека и дату его рождения (putTimeByFormat)
-// из полученного значения даты, выделяем tm_yday
+// Получает номер дня из даты.
+int extractDayOfYearFromDate(time_t date) {
+    std::tm local = *localtime(&date);
+    time_t current = time(nullptr);
+    int corrective{0};
+
+    if (hasLeapYear(date) && !hasLeapYear(current)) corrective -= 1;
+    else if (!hasLeapYear(date) && hasLeapYear(current)) corrective += 1;
+
+    return (local.tm_yday + corrective);
+}
+
 void addEntry(std::map<int, vector<string>> &calendar) {
     string format = "YYYY/mm/dd";
 
@@ -106,17 +113,17 @@ void addEntry(std::map<int, vector<string>> &calendar) {
     auto fullBirthDate = putTimeByFormat(format);
     // Преобразовываем к строке, чтобы сохранить в vector<string>. Обрезаем конечные пробелы
     string fullBirthDateAsString = getTrimmedString(std::ctime(&fullBirthDate));
-    // Извлекаем дату рождения относительно начала текущего года
-    auto dayOfYear = extractDayOfYearFromDate(fullBirthDate);
+
+    auto numberDayOfYear = extractDayOfYearFromDate(fullBirthDate);
+    cout << "Вытащили: " << numberDayOfYear << endl;
 
     // ищем по ключу
-    auto it = calendar.find(dayOfYear);
+    auto it = calendar.find(numberDayOfYear);
     // если записи не существует, создаём её и добавляем в calendar
     if (it == calendar.end()) {
         // Создаем vector, первым значением которого будет полная дата, а вторым - имя человека
-        // дату можно будет в будущем, при необходимости, конвертировать в time_t. А имена - добавлять
         vector<string> newEntryValues = { name, std::ctime(&fullBirthDate) };
-        std::pair<int, vector<string>> newEntry(dayOfYear, newEntryValues);
+        std::pair<int, vector<string>> newEntry(numberDayOfYear, newEntryValues);
         calendar.insert(newEntry);
     }
     // если же запись существует, просто добавляем новое имя
@@ -134,17 +141,17 @@ void printNextBirthday(const std::map<int, vector<string>> &calendar) {
     int today = extractDayOfYearFromDate(now);
 
     // Находим следующий день рождения
-    auto nextBirthDay = calendar.lower_bound(today);
+    auto nextBirthDay = calendar.upper_bound(today);
     // Если запись найдена, значит до конца года есть ближайший день рождения. Выводим его
     if (nextBirthDay != calendar.end()) {
-        cout << "Следующий ближайший день рождения в этом году у: " << endl;
+        cout << "Следующий ближайший день рождения в этом году: " << endl;
         for (const auto &value : nextBirthDay->second) {
             cout << "  - " << value << endl;
         }
     }
     // Либо уже выводим первый день рождения в начале года (но это не должна быть сегодняшняя дата)
     else if (today != calendar.begin()->first) {
-        cout << "Следующий ближайший день рождения будет уже в следующем году у: " << endl;
+        cout << "Ближайший день рождения будет уже в следующем году: " << endl;
         for (const auto &value : calendar.begin()->second) {
             cout << "  - " << value << endl;
         }
@@ -156,8 +163,9 @@ void printCurrentBirthday(const std::map<int, vector<string>> &calendar) {
     int today = extractDayOfYearFromDate(now);
 
     auto it = calendar.find(today);
+
     if (it != calendar.end()) {
-        cout << "Сегодня день рождения у: " << endl;
+        cout << "Сегодня день рождения: " << endl;
         for (const auto &value : it->second) {
             cout << "  - " << value << endl;
         }
@@ -172,14 +180,13 @@ int main() {
 
     addEntry(calendar);
     addEntry(calendar);
-    addEntry(calendar);
-    addEntry(calendar);
+    // addEntry(calendar);
+    // addEntry(calendar);
 
     for (const auto &[key, values] : calendar) {
         cout << key << ": " << endl;
         for (const auto &value : values) {
             cout << "   - " << value << endl;
-            cout << "   - " << value.length() << endl;
         }
     }
 
