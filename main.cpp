@@ -105,17 +105,16 @@ int extractDayOfYearFromDate(time_t date) {
     return (local.tm_yday + corrective);
 }
 
-void addEntry(std::map<int, vector<string>> &calendar) {
+void addEntry(std::map<int, vector<string>> &calendar, const string &name) {
     string format = "YYYY/mm/dd";
 
-    auto name = putLineString("Введите имя человека");
+    // auto name = putLineString("Введите имя человека");
     cout << "Получаем день его рождения в формате " << format << endl;
     auto fullBirthDate = putTimeByFormat(format);
     // Преобразовываем к строке, чтобы сохранить в vector<string>. Обрезаем конечные пробелы
     string fullBirthDateAsString = getTrimmedString(std::ctime(&fullBirthDate));
 
     auto numberDayOfYear = extractDayOfYearFromDate(fullBirthDate);
-    cout << "Вытащили: " << numberDayOfYear << endl;
 
     // ищем по ключу
     auto it = calendar.find(numberDayOfYear);
@@ -133,28 +132,42 @@ void addEntry(std::map<int, vector<string>> &calendar) {
     }
 }
 
+std::tm convertStringToTime(const string &date) {
+    time_t now = time(nullptr);
+    std::tm toParse = *localtime(&now);
+    std::istringstream ss(date);
+    ss >> std::get_time(&toParse, "%a %b %d %H:%M:%S %Y");
+    return toParse;
+}
+
+void printList(const vector<string> &list) {
+    for (auto it = list.begin(); it != list.end(); ++it) {
+        if ((it - list.begin()) % 2) {
+            std::tm parse = convertStringToTime(*it);
+            printf("%i/%i/%i\n", parse.tm_mday, (parse.tm_mon + 1), (parse.tm_year + 1900));
+        }
+        else cout << *it << ": ";
+    }
+}
+
 // Выводит следующий ближайший день рождения
 void printNextBirthday(const std::map<int, vector<string>> &calendar) {
     time_t now = time(nullptr);
-    // В calendar ключами выступают дни текущего года.
-    // Поэтому из текущей даты извлекаем день года. Он позволит анализировать calendar.first
+
+    // Из текущей даты извлекаем день года. Он позволит анализировать calendar.first
     int today = extractDayOfYearFromDate(now);
 
     // Находим следующий день рождения
     auto nextBirthDay = calendar.upper_bound(today);
-    // Если запись найдена, значит до конца года есть ближайший день рождения. Выводим его
+
     if (nextBirthDay != calendar.end()) {
         cout << "Следующий ближайший день рождения в этом году: " << endl;
-        for (const auto &value : nextBirthDay->second) {
-            cout << "  - " << value << endl;
-        }
+        printList(nextBirthDay->second);
     }
     // Либо уже выводим первый день рождения в начале года (но это не должна быть сегодняшняя дата)
     else if (today != calendar.begin()->first) {
         cout << "Ближайший день рождения будет уже в следующем году: " << endl;
-        for (const auto &value : calendar.begin()->second) {
-            cout << "  - " << value << endl;
-        }
+        printList(calendar.begin()->second);
     }
 }
 
@@ -166,9 +179,7 @@ void printCurrentBirthday(const std::map<int, vector<string>> &calendar) {
 
     if (it != calendar.end()) {
         cout << "Сегодня день рождения: " << endl;
-        for (const auto &value : it->second) {
-            cout << "  - " << value << endl;
-        }
+        printList(it->second);
     }
 }
 
@@ -176,18 +187,14 @@ int main() {
     SetConsoleCP(65001);
     SetConsoleOutputCP(65001);
 
+    string msg = "Введите имя человека для создания новой записи. Либо введите end для вывода отчета";
     std::map<int, vector<std::string>> calendar;
 
-    addEntry(calendar);
-    addEntry(calendar);
-    // addEntry(calendar);
-    // addEntry(calendar);
+    while(true) {
+        auto name = putLineString(msg);
+        if (name == "end") break;
 
-    for (const auto &[key, values] : calendar) {
-        cout << key << ": " << endl;
-        for (const auto &value : values) {
-            cout << "   - " << value << endl;
-        }
+        addEntry(calendar, name);
     }
 
     if (!calendar.empty()) {
